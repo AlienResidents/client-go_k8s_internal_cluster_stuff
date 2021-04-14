@@ -1,0 +1,143 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: check-vault-omatic
+  name: check-vault-omatic
+  namespace: tm-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: check-vault-omatic
+  template:
+    metadata:
+      labels:
+        app: check-vault-omatic
+    spec:
+      serviceAccountName: check-vault
+      automountServiceAccountToken: true
+      containers:
+      - name: check-vault-omatic
+        image: ${ parameters.checkVaultOmatic.imageLocation }:${ parameters.checkVaultOmatic.imageTag }
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 60
+        ports:
+        - containerPort: 8080
+          name: http-port
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 25m
+            memory: 50Mi
+          requests:
+            cpu: 25m
+            memory: 50Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: check-vault
+  name: check-vault
+  namespace: tm-system
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: check-vault
+  template:
+    metadata:
+      labels:
+        app: check-vault
+    spec:
+      serviceAccountName: check-vault
+      automountServiceAccountToken: true
+      containers:
+      - name: check-vault
+        image: ${ parameters.checkVault.imageLocation }:${ parameters.checkVault.imageTag }
+        resources:
+          limits:
+            cpu: 25m
+            memory: 500Mi
+          requests:
+            cpu: 25m
+            memory: 500Mi
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: check-vault-omatic
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - cronjobs
+  - jobs
+  - namespaces
+  - nodes
+  - pods
+  - services
+  verbs:
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - services
+  - pods/log
+  - pods/exec
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/exec
+  verbs:
+  - create
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - list
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  # the name of the check-vault role binding
+  name: check-vault-omatic-rolebinding
+  namespace: tm-system
+subjects:
+  - kind: ServiceAccount
+    name: check-vault
+    namespace: tm-system
+roleRef:
+  kind: ClusterRole
+  name: check-vault-omatic
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: check-vault-omatic
+  namespace: tm-system
+spec:
+  selector:
+    app: check-vault-omatic
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
